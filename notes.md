@@ -454,5 +454,137 @@ export class HeroesComponent implements OnInit {
             * An Angular **event binding binds the button's click event to MessageService.clear()**.
 
 ## Routing
+
+###  Creating Routes
 * create module for app routing
 `ng generate module app-routing --flat --module=app`
+* Routes tell the router which view to display when a user go to a link
+* route has two properties
+    * path: a string that matches the URL in the browser address bar.
+    * component: the component that the router should create when navigating to this route.
+* want to go to the herosComponent route when url mathces
+    * app-routing.module.ts
+        * import HeroesComponent and tell it to render that in a route
+        ```ts
+        import { HeroesComponent }      from './heroes/heroes.component';
+
+        const routes: Routes = [
+          { path: 'heroes', component: HeroesComponent }
+        ];
+        ```
+        * init router, tell it to start watching
+        ```ts
+        @NgModule({
+            imports: [ RouterModule.forRoot(routes) ],
+            exports: [ RouterModule ]
+        })
+        ```
+        * forRoot() bc configure router at app root level. For Root method supplies the service with providers/directives for routing
+    * in app.component.html
+        * replace app-heroes with router-outlet bc only want it to display based on URL
+        ```html
+        <h1>{{title}}</h1>
+        <router-outlet></router-outlet>
+        <app-messages></app-messages>
+        ```
+        * **The <router-outlet> tells the router where to display routed views.**
+        * to click a link and navigate, anchor an element with a routerLink
+        ```html
+        <nav>
+          <a routerLink="/heroes">Heroes</a>
+        </nav>
+        ```
+            * routerLink is set to /heroes, public directive in RouterModule which handles navigation in routes
+
+### Add another view
+* `ng generate component dashboard`
+* the dashboard.component.html
+    ```html
+    <h3>Top Heroes</h3>
+    <div class="grid grid-pad">
+      <a *ngFor="let hero of heroes" class="col-1-4">
+        <div class="module hero">
+          <h4>{{hero.name}}</h4>
+        </div>
+      </a>
+    </div>
+    ```
+    * create as many links as in the heroes array
+* dashboard.component.ts
+    * create empty heroes array `heroes: Hero[] = [];`
+    * constructor expects Angular to inject the HeroService into a private heroService property. `constructor(private heroService: HeroService) { }`
+    * ngOnInit() calls getHeroes which returns 2-5
+    ```ts
+    ngOnInit() {
+      this.getHeroes();
+    }
+
+    getHeroes(): void {
+      this.heroService.getHeroes()
+        .subscribe(heroes => this.heroes = heroes.slice(1, 5));
+    }
+    ```
+* add a dashboard route in app-routing.module.ts
+    * first import the Dashboard component
+    `import { DashboardComponent }   from './dashboard/dashboard.component';`
+    * add a specific and default route
+    ```ts
+        const routes: Routes = [
+            { path: 'dashboard', component: DashboardComponent },
+            { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
+            { path: 'heroes', component: HeroesComponent }
+        ];
+    ```
+* add a dashboard link in app.component.html
+```html
+<nav>
+  <a routerLink="/dashboard">Dashboard</a>
+  <a routerLink="/heroes">Heroes</a>
+</nav>
+```
+
+### Navigate hero details
+* right now it shows on the bottom of **heroes.component.html** when seeing the hero component view, delete it from there
+```html
+<app-hero-detail [currHero]="selectedHero"></app-hero-detail>
+```
+* want to see it
+    * By clicking a hero in the dashboard.
+    * By clicking a hero in the heroes list.
+    * By pasting a "deep link" URL into the browser address bar that identifies the hero to display.
+
+**Add hero detail route**
+* to app.routing.module.ts  `import { HeroDetailComponent }  from './hero-detail/hero-detail.component';`
+* parameterized route `{ path: 'detail/:id', component: HeroDetailComponent },`
+* `* :id` indicates its a placeholder for a specific id
+
+* change the dashboard hero links to navigate via the parameterized route - dashboard.component.html
+```html
+<a *ngFor="let hero of heroes" class="col-1-4"
+    routerLink="/detail/{{hero.id}}">
+  <div class="module hero">
+    <h4>{{hero.name}}</h4>
+  </div>
+</a>
+```
+* using Angular interpolation binding within the **\*ngFor** repeater to insert the current iteration's hero.id into each routerLink
+
+* in heroes.component.html
+    * strip <li> to take away the on click function and css assignment, wrap the bade in an anchor which like above passes the heroID to the routerLink
+    ```html
+    <li *ngFor="let hero of heroes">
+          <!-- (click)="onSelect(hero)" -->
+          <!-- [class.selected]="hero === selectedHero"> -->
+      <a routerLink="/detail/{{hero.id}}">
+          <span class="badge">{{hero.id}}</span> {{hero.name}}
+      </a>
+    </li>
+    ```
+
+
+#### Make HeroDetailComponent Routeable
+* previously HeroesComponent set the HeroDetailComponent.hero property and the HeroDetailComponent displayed the hero, now router creates the detailComponent in response to a URL
+* hero detail needs to
+    * Get the route that created it,
+    * Extract the id from the route
+    * Acquire the hero with that id from the server via the HeroService
